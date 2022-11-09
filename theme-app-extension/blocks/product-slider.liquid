@@ -1,0 +1,18 @@
+<div id="simesy-slider-section" class="simesy-slider-section" data-slider-id="{{ block.settings.id }}"></div>
+
+<script src="{{ 'product-slider.js' | asset_url }}" defer></script>
+
+{% schema %}
+{
+  "name": "Product Slider",
+  "templates": ["article", "index", "page", "product"],
+  "target": "section",
+  "settings": [
+    {
+      "id": "id",
+      "type": "text",
+      "label": "Product Slider ID"
+    }
+  ]
+}
+{% endschema %}
