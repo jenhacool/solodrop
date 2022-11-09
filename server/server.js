@@ -111,18 +111,13 @@ app.prepare().then(async () => {
 
   const verifyIfActiveShopifyShop = async (ctx, next) => {
     let { shop } = ctx.query;
-    shop = "chienvu-store.myshopify.com";
     const shopData = await Shop.findOne({ shop });
 
-    console.log("here 1", ACTIVE_SHOPIFY_SHOPS);
-    console.log("here 2", shopData);
-    console.log("here 3", shop);
-
     // This shop hasn't been seen yet, go through OAuth to create a session
-    // if (ACTIVE_SHOPIFY_SHOPS[shop] === undefined || !shopData) {
-    //   ctx.redirect(`/auth?shop=${shop}`);
-    //   return;
-    // }
+    if (ACTIVE_SHOPIFY_SHOPS[shop] === undefined || !shopData) {
+      ctx.redirect(`/auth?shop=${shop}`);
+      return;
+    }
 
     return next();
   };

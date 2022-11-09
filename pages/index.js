@@ -144,6 +144,35 @@ const Index = () => {
       >
         <Layout>
           <Layout.Section>
+            {/* Screen 1 */}
+            {/* <Card title="Enter your license code" sectioned>
+              <FormLayout>
+                <TextField placeholder="License code" />
+                <Button primary>Active</Button>
+              </FormLayout>
+            </Card> */}
+            {/* Screen 2 */}
+            {/* <div className="card">
+              <FormLayout>
+                <div className="card-header">
+                  <h4>Theme Manager</h4>
+                  <Button primary>Install Solodrop Theme</Button>
+                </div>
+                <div className="card-content">
+                  <h5>License</h5>
+                  <p>aaa</p>
+                </div>
+                <div className="card-content">
+                  <h5>Current version</h5>
+                  <p>aaa</p>
+                </div>
+                <div className="card-content">
+                  <h5>Latest version</h5>
+                  <p>aaa</p>
+                  <Button primary>Update version</Button>
+                </div>
+              </FormLayout>
+            </div> */}
             {userInfo ? <div className="card">
               <FormLayout>
                 <div className="card-header">

@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 
 const ThemeSchema = mongoose.Schema(
   {
-    latesVersion: {
+    latestVersion: {
       type: "String",
       required: false,
     },

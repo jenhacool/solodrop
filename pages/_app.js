@@ -59,7 +59,7 @@ class MyApp extends App {
           config={{
             apiKey: API_KEY,
             host: host,
-            forceRedirect: false,
+            forceRedirect: true,
           }}
         >
           <MyProvider Component={Component} {...pageProps} />

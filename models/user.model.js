@@ -4,7 +4,7 @@ const UserSchema = mongoose.Schema(
   {
     shop: {
       type: "String",
-      required: true,
+      // required: true,
     },
     info: {
       type: "Object",
