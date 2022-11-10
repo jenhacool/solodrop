@@ -1,11 +1,26 @@
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { getSessionToken } from "@shopify/app-bridge-utils";
 import {
-  Button, ButtonGroup, Card, FormLayout, Frame, IndexTable, Layout, Loading, Page, TextField, Toast, useIndexResourceState
+  Badge,
+  Banner,
+  Button,
+  ButtonGroup,
+  Card,
+  FormLayout,
+  Frame,
+  IndexTable,
+  Layout,
+  Loading,
+  Page,
+  TextContainer,
+  TextField,
+  Toast,
+  useIndexResourceState,
 } from "@shopify/polaris";
 import axios from "axios";
 import { useRouter } from "next/router";
 import React, { useCallback, useEffect, useState } from "react";
+import { compareVersions } from 'compare-versions';
 
 const Index = () => {
   // const app = useAppBridge();
@@ -25,6 +40,7 @@ const Index = () => {
   const [contractAddress, setContractAddress] = useState("");
   const [userInfo, setUserInfo] = useState({});
   const [activeError, setActiveError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const [activeSuccess, setActiveSuccess] = useState(0);
   const [isOpenModalConfirmDelete, setIsOpenModalConfirmDelete] = useState(
     false
@@ -35,10 +51,12 @@ const Index = () => {
     handleSelectionChange,
   } = useIndexResourceState([]);
 
+  const [licenseKey, setLicenseKey] = useState("");
+  const [isActive, setIsActive] = useState(false);
+  const [shopData, setShopData] = useState({})
+  const [latestVersion, setLatestVersion] = useState("");
+
   const shop = router.query.shop || "";
-
-
-
 
   const handleOpenDeleteSetting = (id) => {
     setSettingId(id);
@@ -49,10 +67,11 @@ const Index = () => {
     if (activeError) {
       setTimeout(() => {
         setActiveError(false);
+        setErrorMessage("");
       }, 3000);
-      return <Toast error={true} content="Server error" />;
+      return <Toast error={true} content={errorMessage} />;
     }
-  }, [activeError]);
+  }, [activeError, errorMessage]);
 
   const messageSuccess = useCallback(() => {
     let message = "";
@@ -66,7 +85,9 @@ const Index = () => {
       case 3:
         message = "Delete success";
         break;
-
+      case 4:
+        message = "Theme installed";
+        break;
       default:
         break;
     }
@@ -86,127 +107,171 @@ const Index = () => {
     };
 
     try {
-      let { data } = await axios.post("/api/get-info", body, {
+      let { data } = await axios.post("/api/get_info", body, {
         headers: {
           // Authorization: `Bearer ${sessionToken}`,
         },
       });
-      console.log(response)
-      // setSettings(response.data.data.settings);
-      setUserInfo(data?.data?.userInfo)
+      console.log(data?.data?.userInfo);
+      setUserInfo(data?.data?.userInfo);
       setIsLoading(false);
     } catch (error) {
       setIsLoading(false);
     }
-
   };
 
-  // const saveSettings = async (newSettings) => {
-  //   let sessionToken = await getSessionToken(app);
+  const getThemeVersion = async () => {
+    // let sessionToken = await getSessionToken(app);
+    setIsLoading(true);
 
-  //   let data = {
-  //     shop,
-  //     settings: newSettings,
-  //   };
+    let body = {}
 
-  //   try {
-  //     let response = await axios.post("/api/settings/save", data, {
-  //       headers: {
-  //         Authorization: `Bearer ${sessionToken}`,
-  //       },
-  //     });
-  //     if (response) {
-  //       return true;
-  //     }
-  //   } catch (error) {
-  //     return false;
-  //   }
-  // };
+    try {
+      let { data } = await axios.post("/api/check_theme", body, {
+        headers: {
+          // Authorization: `Bearer ${sessionToken}`,
+        },
+      });
+      setLatestVersion(data?.data?.version);
+      setIsLoading(false);
+    } catch (error) {
+      setIsLoading(false);
+    }
+  };
+
+  const getShop = async () => {
+    // let sessionToken = await getSessionToken(app);
+    setIsLoading(true);
+    let body = {
+      shop,
+    };
+
+    try {
+      let { data } = await axios.post("/api/get_shop", body, {
+        headers: {
+          // Authorization: `Bearer ${sessionToken}`,
+        },
+      });
+      setIsActive(data?.data?.shopData.active);
+      setShopData(data?.data?.shopData);
+      setIsLoading(false);
+    } catch (error) {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    getSettings();
-  }, []);
+    getShop();
+    if (isActive) {
+      getSettings();
+      getThemeVersion();
+    }
+  }, [isActive]);
 
-  if (isLoading) {
-    return (
-      <div style={{ height: '100px' }}>
-        <Frame>
-          <Loading />
-        </Frame>
-      </div>
-    )
+  const handleChangeLicenseKey = useCallback(
+    (newValue) => setLicenseKey(newValue),
+    []
+  );
 
-  }
+  const activateLicense = async () => {
+    // let sessionToken = await getSessionToken(app);
+
+    setIsLoading(true);
+
+    let body = {
+      shop,
+      license_key: licenseKey,
+    };
+
+    try {
+      let response = await axios.post("/api/activate_license", body, {
+        headers: {
+          // Authorization: `Bearer ${sessionToken}`,
+        },
+      });
+      setIsLoading(false);
+      setIsActive(true);
+      setUserInfo(response?.data?.data?.userInfo);
+    } catch (error) {
+      setIsLoading(false);
+      setActiveError(true);
+      setErrorMessage(error?.response?.data?.message);
+    }
+  };
+
+  const installTheme = async () => {
+    // let sessionToken = await getSessionToken(app);
+    setIsLoading(true);
+    let body = {
+      shop,
+    };
+
+    try {
+      let { data } = await axios.post("/api/install_theme", body, {
+        headers: {
+          // Authorization: `Bearer ${sessionToken}`,
+        },
+      });
+      setIsLoading(false);
+      setActiveSuccess(4);
+    } catch (error) {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <Frame>
-      <Page
-      >
-        <Layout>
-          <Layout.Section>
-            {/* Screen 1 */}
-            {/* <Card title="Enter your license code" sectioned>
-              <FormLayout>
-                <TextField placeholder="License code" />
-                <Button primary>Active</Button>
-              </FormLayout>
-            </Card> */}
-            {/* Screen 2 */}
-            {/* <div className="card">
-              <FormLayout>
-                <div className="card-header">
-                  <h4>Theme Manager</h4>
-                  <Button primary>Install Solodrop Theme</Button>
-                </div>
-                <div className="card-content">
-                  <h5>License</h5>
-                  <p>aaa</p>
-                </div>
-                <div className="card-content">
-                  <h5>Current version</h5>
-                  <p>aaa</p>
-                </div>
-                <div className="card-content">
-                  <h5>Latest version</h5>
-                  <p>aaa</p>
-                  <Button primary>Update version</Button>
-                </div>
-              </FormLayout>
-            </div> */}
-            {userInfo ? <div className="card">
-              <FormLayout>
-                <div className="card-header">
-                  <h4>Theme Manager</h4>
-                  <Button primary>Install Solodrop Theme</Button>
-                </div>
-                <div className="card-content">
-                  <h5>License</h5>
-                  <p>aaa</p>
-                </div>
-                <div className="card-content">
-                  <h5>Current version</h5>
-                  <p>aaa</p>
-                </div>
-                <div className="card-content">
-                  <h5>Latest version</h5>
-                  <p>aaa</p>
-                  <Button primary>Update version</Button>
-                </div>
-              </FormLayout>
-            </div> : <div className="card">
-              <FormLayout>
-                <div className="card-header">
-                  <h4>Enter your license code</h4>
-                </div>
-                <TextField placeholder="License code" />
-                <Button primary>Active</Button>
-              </FormLayout>
-            </div>}
-
-          </Layout.Section>
-        </Layout>
-
-      </Page>
+      {isLoading && <Loading />}
+      {shopData && Object.keys(shopData).length > 0 && isActive ? (
+        <Page
+          narrowWidth={true}
+          title="Theme Manager"
+          primaryAction={{ content: "Install Solodrop Theme", onAction: installTheme }}
+        >
+          <Layout>
+            <Layout.Section>
+              <Card title="License" sectioned>
+                <p>{userInfo.license_key}</p>
+              </Card>
+              {shopData.detail.theme_installed && (
+                <>
+                <Card title="Current Version" sectioned>
+                  {shopData.detail.theme_version}
+                </Card>
+                <Card title="Latest Version" sectioned>
+                  <TextContainer>
+                  <p>{latestVersion}</p>
+                  {compareVersions(latestVersion, shopData.detail.theme_version) &&
+                    <Button primary>Update version</Button>
+                  }
+                  </TextContainer>
+                </Card>
+                </>
+              )}
+            </Layout.Section>
+          </Layout>
+        </Page>
+      ) : (
+        <Page>
+          <Layout>
+            <Layout.Section>
+        <Card title="Enter your license code" sectioned>
+          <FormLayout>
+            <TextField
+              value={licenseKey}
+              onChange={handleChangeLicenseKey}
+              autoComplete="off"
+              placeholder="License code"
+            />
+            <Button onClick={activateLicense} disabled={isLoading} primary>
+              Active
+            </Button>
+          </FormLayout>
+        </Card>
+        </Layout.Section>
+          </Layout>
+        </Page>
+      )}
 
       {messageSuccess()}
       {errorMarkup()}

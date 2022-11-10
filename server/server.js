@@ -8,6 +8,7 @@ import next from "next";
 import Router from "koa-router";
 import Shop from "../models/shop.model";
 import Setting from "../models/theme.model";
+import Theme from "../models/theme.model";
 import User from "../models/user.model";
 import {
   storeCallback,
@@ -58,7 +59,7 @@ Shopify.Context.initialize({
     ? process.env.SCOPES.split(",")
     : "read_content,write_content,read_script_tags,write_script_tags,read_products,read_themes",
   HOST_NAME: process.env.HOST.replace(/https:\/\//, ""),
-  API_VERSION: "2022-01",
+  API_VERSION: "2022-04",
   IS_EMBEDDED_APP: true,
   SESSION_STORAGE: new Shopify.Session.CustomSessionStorage(
     storeCallback,
@@ -170,7 +171,7 @@ app.prepare().then(async () => {
     async (ctx) => {
       let body = ctx.request.body;
       try {
-        if (ctx.request.hostname == process.env.IP_ADDRESS) {
+        // if (ctx.request.hostname == process.env.IP_ADDRESS) {
           const userInfo = await new User(body);
           userInfo.save();
 
@@ -179,7 +180,7 @@ app.prepare().then(async () => {
             success: true,
           };
           return;
-        }
+        // }
 
         ctx.status = 400;
         ctx.body = {
@@ -215,7 +216,7 @@ app.prepare().then(async () => {
     }
   });
 
-  router.post("/api/get-info", verifyAPI, bodyParser(), async (ctx) => {
+  router.post("/api/get_info", verifyAPI, bodyParser(), async (ctx) => {
     let { shop } = ctx.request.body;
 
     try {
@@ -234,6 +235,169 @@ app.prepare().then(async () => {
         success: false,
       };
     }
+  });
+
+  router.post("/api/check_theme", verifyAPI, bodyParser(), async (ctx) => {
+    try {
+      let theme = await Theme.findOne();
+      ctx.status = 200;
+      ctx.body = {
+        success: true,
+        data: {
+          version: theme.latestVersion,
+        },
+      };
+    } catch (error) {
+      console.log(error);
+      ctx.status = 400;
+      ctx.body = {
+        success: false,
+      };
+    }
+  });
+
+  router.post("/api/activate_license", verifyAPI, bodyParser(), async (ctx) => {
+    let { shop, license_key } = ctx.request.body;
+
+    try {
+      let user = await User.findOne({ license_key });
+      if (!user) {
+        ctx.status = 400;
+        ctx.body = {
+          success: false,
+          message: "Wrong license key"
+        };
+        return
+      }
+      if (user.shop != "") {
+        ctx.status = 400;
+        ctx.body = {
+          success: false,
+          message: "License key activated for other store"
+        };
+        return;
+      }
+      user = await User.findOneAndUpdate({ license_key }, { shop }, {new: true});
+      await Shop.updateOne({ shop }, { active: true });
+      ctx.status = 200;
+      ctx.body = {
+        success: true,
+        data: {
+          userInfo: user
+        }
+      };
+    } catch (error) {
+      ctx.status = 400;
+      ctx.body = {
+        success: false,
+      };
+    }
+  });
+
+  const installTheme = async (shop) => {
+    try {
+      let shopData = await Shop.findOne({ shop });
+      if (!shopData) {
+        console.log("here 1");
+        return false;
+      }
+      let restClient = new Shopify.Clients.Rest(
+        shopData.shop,
+        shopData.token
+      );
+      let theme = await Theme.findOne();
+      if (!theme) {
+        console.log("here 2");
+        return false;
+      }
+      let install = await restClient.post({
+        path: "themes",
+        data: {
+          "theme": {
+            "name": `Solodrop ${theme.latestVersion}`,
+            "src": theme.url,
+            "role": "unpublished"
+          }
+        },
+        type: "application/json",
+      });
+      console.log(install);
+      if (!install) {
+        return false;
+      }
+      await Shop.updateOne({shop}, {detail: {
+        theme_installed: true,
+        theme_installing: true,
+        theme_version: theme.latestVersion
+      }})
+      let graphQL = new Shopify.Clients.Graphql(shopData.shop, shopData.token);
+      let appInstallation = await graphQL.query({
+        data: {
+          query: `{
+            appInstallation {
+              id
+            } 
+          }`
+        }
+      });
+      let appId = appInstallation?.body?.data?.appInstallation?.id
+      const queryWithVariables = {
+        query: `
+          mutation CreateAppOwnedMetafield($metafields: [MetafieldsSetInput!]!) {
+            metafieldsSet(metafields: $metafields) {
+              metafields {
+                id
+                namespace
+                key
+              }
+              userErrors {
+                field
+                message
+              }
+            }
+          }
+        `,
+        variables: {
+          metafields: [
+						{
+							key: 'test_key',
+							namespace: 'solodrop',
+							ownerId: appId,
+							type: 'single_line_text_field',
+							value: 'test_value',
+						},
+					],
+        },
+      };
+      let metafield = await graphQL.query({
+        data: queryWithVariables
+      })
+      console.log(metafield.body.data.metafieldsSet);
+      return true;
+      // Call Shopify API to install theme
+      // Call Shopify API to add metafields
+    } catch(error) {
+      console.log(error);
+      return false;
+    }
+  }
+
+  router.post("/api/install_theme", bodyParser(), async (ctx) => {
+    let { shop } = ctx.request.body;
+
+    let success = await installTheme(shop);
+
+    ctx.status = 200;
+    ctx.body = {
+      success: true,
+      data: {
+
+      },
+    };
+  });
+
+  router.post("/api/update_theme", async () => {
+
   });
 
   router.post("/api/settings/save",
