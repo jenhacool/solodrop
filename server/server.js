@@ -51,6 +51,7 @@ const app = next({
   dev,
 });
 const handle = app.getRequestHandler();
+const morgan = require("koa-morgan");
 
 Shopify.Context.initialize({
   API_KEY: process.env.SHOPIFY_API_KEY,
@@ -79,6 +80,7 @@ if (process.env.NODE_ENV == "development") {
 app.prepare().then(async () => {
   const server = new Koa();
   const router = new Router();
+  server.use(morgan("dev"));
   server.keys = [Shopify.Context.API_SECRET_KEY];
   server.use(
     createShopifyAuth({
@@ -167,11 +169,25 @@ app.prepare().then(async () => {
 
   router.post("/api/new_user",
     bodyParser(),
-    verifyAPI,
+    // verifyAPI,
     async (ctx) => {
-      let body = ctx.request.body;
+      // let shop = ctx.request.headers['x-shopify-shop-domain'];
+      // compare hmac to our own hash
+      // let hmac = ctx.request.headers['x-shopify-hmac-sha256'];
+      // let hash = crypto.createHmac('sha256', process.env.SHOPIFY_APP_SECRET).update(ctx.request.rawBody, 'utf8', 'hex').digest('base64');
+
+      let { email } = ctx.request.body;
+      
       try {
         // if (ctx.request.hostname == process.env.IP_ADDRESS) {
+          let response = await axios.post("", {}, {
+            headers: {
+              "accept": "application/json",
+              "revision": "2022-10-17",
+              "content-type": "application/json",
+              "Authorization": "pk_ef64b4b1f554e49c6016394c81ea56846d"
+            }
+          })
           const userInfo = await new User(body);
           userInfo.save();
 
@@ -480,18 +496,31 @@ app.prepare().then(async () => {
     }
   );
 
-  router.post("/api/get_settings", cors(), bodyParser(), async (ctx) => {
+  router.post("/api/check_theme_license", cors(), bodyParser(), async (ctx) => {
     console.log("here");
     let { shop } = ctx.request.body;
 
+    console.log(ctx.request);
+
+    console.log(ctx.request.body);
+
     try {
-      let setting = await Setting.findOne({ shop });
+      let data = {
+        "theme_license_valid": false,
+        "theme_installed_version": ""
+      }
+      let user = await User.findOne({ shop });
+      if (user ) {
+        data.theme_license_valid = true;
+      }
+      let shopData = await Shop.findOne({ shop });
+      if (shopData && shopData.detail.theme_installed && shopData.detail.theme_version) {
+        data.theme_installed_version = shopData.detail.theme_version;
+      }
       ctx.status = 200;
       ctx.body = {
         success: true,
-        data: {
-          settings: setting ? setting.settings : [],
-        },
+        data
       };
     } catch (error) {
       console.log(error);
