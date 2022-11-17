@@ -21,6 +21,7 @@ const mongoose = require("mongoose");
 const bodyParser = require("koa-bodyparser");
 const cors = require("@koa/cors");
 const fs = require('fs');
+const axios = require('axios');
 dotenv.config();
 
 mongoose
@@ -52,6 +53,8 @@ const app = next({
 });
 const handle = app.getRequestHandler();
 const morgan = require("koa-morgan");
+const licenseKey = require('license-key-gen');
+const crypto = require('crypto');
 
 Shopify.Context.initialize({
   API_KEY: process.env.SHOPIFY_API_KEY,
@@ -169,41 +172,94 @@ app.prepare().then(async () => {
 
   router.post("/api/new_user",
     bodyParser(),
-    // verifyAPI,
     async (ctx) => {
-      // let shop = ctx.request.headers['x-shopify-shop-domain'];
-      // compare hmac to our own hash
-      // let hmac = ctx.request.headers['x-shopify-hmac-sha256'];
-      // let hash = crypto.createHmac('sha256', process.env.SHOPIFY_APP_SECRET).update(ctx.request.rawBody, 'utf8', 'hex').digest('base64');
-
-      let { email } = ctx.request.body;
+      console.log(ctx.request.headers);
       
       try {
-        // if (ctx.request.hostname == process.env.IP_ADDRESS) {
-          let response = await axios.post("", {}, {
-            headers: {
-              "accept": "application/json",
-              "revision": "2022-10-17",
-              "content-type": "application/json",
-              "Authorization": "pk_ef64b4b1f554e49c6016394c81ea56846d"
-            }
-          })
-          const userInfo = await new User(body);
-          userInfo.save();
+        let shop = ctx.request.headers['x-shopify-shop-domain'];
+        let hmac = ctx.request.headers['x-shopify-hmac-sha256'];
+        let hash = crypto.createHmac('sha256', process.env.SHOPIFY_WEBHOOK_KEY).update(ctx.request.rawBody, 'utf8', 'hex').digest('base64');
 
+        if (hmac != hash) {
           ctx.status = 200;
           ctx.body = {
-            success: true,
+            success: false,
           };
-          return;
+          return
+        }
+
+        let { email } = ctx.request.body;
+
+        let userInfo = {
+          email
+        };
+
+        let licenseData = {
+          info: userInfo, 
+          prodCode: "LEN100120", 
+          appVersion: "1.5", 
+          osType: "IOS8"
+        }
+
+        let license = licenseKey.createLicense(licenseData);
+
+        let license_key = license.license;
+
+        let user =  new User({
+          info: userInfo,
+          license_key
+        })
+
+        await user.save();
+
+        // let response = await axios.get(`https://a.klaviyo.com/api/profiles/?fields\[profile\]=${email}`, {}, {
+        //   headers: {
+        //     "accept": "application/json",
+        //     "revision": "2022-10-17",
+        //     "content-type": "application/json",
+        //     "Authorization": "pk_ef64b4b1f554e49c6016394c81ea56846d"
+        //   }
+        // });
+
+        // console.log(response);
+
+        // let profiles = response.data.data;
+
+        // if (!profiles) {
+        //   ctx.status = 200;
+        //   ctx.body = {
+        //     success: true,
+        //   };
+        //   return;
         // }
 
-        ctx.status = 400;
+        // let profile = profiles[0];
+
+        // let { id } = profile;
+
+        // await axios.patch(`https://a.klaviyo.com/api/profiles/${id}`, {
+        //   type: "profile",
+        //   attributes: {
+        //     properties: {
+        //       licenseKey: license_key
+        //     }
+        //   }
+        // }, {
+        //   headers: {
+        //     "accept": "application/json",
+        //     "revision": "2022-10-17",
+        //     "content-type": "application/json",
+        //     "Authorization": "pk_ef64b4b1f554e49c6016394c81ea56846d"
+        //   }
+        // });
+
+        ctx.status = 200;
         ctx.body = {
-          success: false,
+          success: true,
         };
       } catch (error) {
-        ctx.status = 400;
+        console.log(error);
+        ctx.status = 200;
         ctx.body = {
           success: false,
         };
@@ -211,7 +267,7 @@ app.prepare().then(async () => {
     }
   );
 
-  router.post("/api/get_shop", verifyAPI, bodyParser(), async (ctx) => {
+  router.post("/api/get_shop", verifyRequest({ accessMode: "offline" }), bodyParser(), async (ctx) => {
     let { shop } = ctx.request.body;
 
     try {
@@ -232,7 +288,7 @@ app.prepare().then(async () => {
     }
   });
 
-  router.post("/api/get_info", verifyAPI, bodyParser(), async (ctx) => {
+  router.post("/api/get_info", verifyRequest({ accessMode: "offline" }), bodyParser(), async (ctx) => {
     let { shop } = ctx.request.body;
 
     try {
@@ -253,7 +309,7 @@ app.prepare().then(async () => {
     }
   });
 
-  router.post("/api/check_theme", verifyAPI, bodyParser(), async (ctx) => {
+  router.post("/api/check_theme", verifyRequest({ accessMode: "offline" }), bodyParser(), async (ctx) => {
     try {
       let theme = await Theme.findOne();
       ctx.status = 200;
@@ -272,7 +328,7 @@ app.prepare().then(async () => {
     }
   });
 
-  router.post("/api/activate_license", verifyAPI, bodyParser(), async (ctx) => {
+  router.post("/api/activate_license", verifyRequest({ accessMode: "offline" }), bodyParser(), async (ctx) => {
     let { shop, license_key } = ctx.request.body;
 
     try {
@@ -314,7 +370,6 @@ app.prepare().then(async () => {
     try {
       let shopData = await Shop.findOne({ shop });
       if (!shopData) {
-        console.log("here 1");
         return false;
       }
       let restClient = new Shopify.Clients.Rest(
@@ -323,7 +378,6 @@ app.prepare().then(async () => {
       );
       let theme = await Theme.findOne();
       if (!theme) {
-        console.log("here 2");
         return false;
       }
       let install = await restClient.post({
@@ -337,7 +391,6 @@ app.prepare().then(async () => {
         },
         type: "application/json",
       });
-      console.log(install);
       if (!install) {
         return false;
       }
@@ -346,155 +399,79 @@ app.prepare().then(async () => {
         theme_installing: true,
         theme_version: theme.latestVersion
       }})
-      let graphQL = new Shopify.Clients.Graphql(shopData.shop, shopData.token);
-      let appInstallation = await graphQL.query({
-        data: {
-          query: `{
-            appInstallation {
-              id
-            } 
-          }`
-        }
-      });
-      let appId = appInstallation?.body?.data?.appInstallation?.id
-      const queryWithVariables = {
-        query: `
-          mutation CreateAppOwnedMetafield($metafields: [MetafieldsSetInput!]!) {
-            metafieldsSet(metafields: $metafields) {
-              metafields {
-                id
-                namespace
-                key
-              }
-              userErrors {
-                field
-                message
-              }
-            }
-          }
-        `,
-        variables: {
-          metafields: [
-						{
-							key: 'test_key',
-							namespace: 'solodrop',
-							ownerId: appId,
-							type: 'single_line_text_field',
-							value: 'test_value',
-						},
-					],
-        },
-      };
-      let metafield = await graphQL.query({
-        data: queryWithVariables
-      })
-      console.log(metafield.body.data.metafieldsSet);
+      // let graphQL = new Shopify.Clients.Graphql(shopData.shop, shopData.token);
+      // let appInstallation = await graphQL.query({
+      //   data: {
+      //     query: `{
+      //       appInstallation {
+      //         id
+      //       } 
+      //     }`
+      //   }
+      // });
+      // let appId = appInstallation?.body?.data?.appInstallation?.id
+      // const queryWithVariables = {
+      //   query: `
+      //     mutation CreateAppOwnedMetafield($metafields: [MetafieldsSetInput!]!) {
+      //       metafieldsSet(metafields: $metafields) {
+      //         metafields {
+      //           id
+      //           namespace
+      //           key
+      //         }
+      //         userErrors {
+      //           field
+      //           message
+      //         }
+      //       }
+      //     }
+      //   `,
+      //   variables: {
+      //     metafields: [
+			// 			{
+			// 				key: 'test_key',
+			// 				namespace: 'solodrop',
+			// 				ownerId: appId,
+			// 				type: 'single_line_text_field',
+			// 				value: 'test_value',
+			// 			},
+			// 		],
+      //   },
+      // };
+      // let metafield = await graphQL.query({
+      //   data: queryWithVariables
+      // })
+      // console.log(metafield.body.data.metafieldsSet);
       return true;
-      // Call Shopify API to install theme
-      // Call Shopify API to add metafields
     } catch(error) {
       console.log(error);
       return false;
     }
   }
 
-  router.post("/api/install_theme", bodyParser(), async (ctx) => {
+  router.post("/api/install_theme", verifyRequest({ accessMode: "offline" }), bodyParser(), async (ctx) => {
     let { shop } = ctx.request.body;
 
-    let success = await installTheme(shop);
+    await installTheme(shop);
 
     ctx.status = 200;
     ctx.body = {
       success: true,
-      data: {
-
-      },
+      data: {},
     };
   });
 
-  router.post("/api/update_theme", async () => {
+  router.post("/api/update_theme", verifyRequest({ accessMode: "offline" }), async () => {
+    let { shop } = ctx.request.body;
 
+    await installTheme(shop);
+
+    ctx.status = 200;
+    ctx.body = {
+      success: true,
+      data: {},
+    };
   });
-
-  router.post("/api/settings/save",
-    bodyParser(),
-    verifyAPI,
-    async (ctx) => {
-      let { shop, settings } = ctx.request.body;
-
-      try {
-        await Setting.findOneAndUpdate({ shop }, { settings }, { new: true, upsert: true });
-        ctx.status = 200;
-        ctx.body = {
-          success: true,
-          data: {
-            settings,
-          },
-        };
-      } catch (error) {
-        console.log(error);
-        ctx.status = 400;
-        ctx.body = {
-          success: false,
-        };
-      }
-    }
-  );
-
-  router.put(
-    "/api/settings/:id",
-    bodyParser(),
-    verifyRequest({ accessMode: "offline" }),
-    async (ctx) => {
-      let { shop, config } = ctx.request.body;
-      let { id } = ctx.params;
-
-      try {
-        let settings = await Setting.findByIdAndUpdate(
-          id,
-          { $set: { config: config } },
-          { new: true }
-        );
-        ctx.status = 200;
-        ctx.body = {
-          success: true,
-          data: {
-            settings,
-          },
-        };
-      } catch (error) {
-        console.log(error);
-        ctx.status = 400;
-        ctx.body = {
-          success: false,
-        };
-      }
-    }
-  );
-
-  router.delete(
-    "/api/setting-product/:id",
-    bodyParser(),
-    verifyRequest({ accessMode: "offline" }),
-    async (ctx) => {
-      let { shop } = ctx.request.body;
-      let { id } = ctx.params;
-
-      try {
-        await Setting.deleteOne({ _id: id });
-        ctx.status = 200;
-        ctx.body = {
-          success: true,
-        };
-      } catch (error) {
-        console.log(error);
-        ctx.status = 400;
-        ctx.body = {
-          success: false,
-        };
-      }
-    }
-  );
 
   router.post("/api/check_theme_license", cors(), bodyParser(), async (ctx) => {
     console.log("here");

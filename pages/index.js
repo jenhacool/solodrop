@@ -23,7 +23,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { compareVersions } from 'compare-versions';
 
 const Index = () => {
-  // const app = useAppBridge();
+  const app = useAppBridge();
   const [openEditor, setOpenEditor] = useState(false);
   const [idEdit, setIdEdit] = useState("");
   const [slider, setSlider] = useState([]);
@@ -55,6 +55,7 @@ const Index = () => {
   const [isActive, setIsActive] = useState(false);
   const [shopData, setShopData] = useState({})
   const [latestVersion, setLatestVersion] = useState("");
+  const [hasUpdate, setHasUpdate] = useState(false);
 
   const shop = router.query.shop || "";
 
@@ -100,7 +101,7 @@ const Index = () => {
   }, [activeSuccess]);
 
   const getSettings = async () => {
-    // let sessionToken = await getSessionToken(app);
+    let sessionToken = await getSessionToken(app);
     setIsLoading(true);
     let body = {
       shop,
@@ -109,7 +110,7 @@ const Index = () => {
     try {
       let { data } = await axios.post("/api/get_info", body, {
         headers: {
-          // Authorization: `Bearer ${sessionToken}`,
+          Authorization: `Bearer ${sessionToken}`,
         },
       });
       console.log(data?.data?.userInfo);
@@ -121,7 +122,7 @@ const Index = () => {
   };
 
   const getThemeVersion = async () => {
-    // let sessionToken = await getSessionToken(app);
+    let sessionToken = await getSessionToken(app);
     setIsLoading(true);
 
     let body = {}
@@ -129,7 +130,7 @@ const Index = () => {
     try {
       let { data } = await axios.post("/api/check_theme", body, {
         headers: {
-          // Authorization: `Bearer ${sessionToken}`,
+          Authorization: `Bearer ${sessionToken}`,
         },
       });
       setLatestVersion(data?.data?.version);
@@ -140,7 +141,7 @@ const Index = () => {
   };
 
   const getShop = async () => {
-    // let sessionToken = await getSessionToken(app);
+    let sessionToken = await getSessionToken(app);
     setIsLoading(true);
     let body = {
       shop,
@@ -149,7 +150,7 @@ const Index = () => {
     try {
       let { data } = await axios.post("/api/get_shop", body, {
         headers: {
-          // Authorization: `Bearer ${sessionToken}`,
+          Authorization: `Bearer ${sessionToken}`,
         },
       });
       setIsActive(data?.data?.shopData.active);
@@ -160,6 +161,10 @@ const Index = () => {
     }
   };
 
+  const checkThemeUpdate = () => {
+    setHasUpdate(compareVersions(latestVersion, shopData.detail.theme_version) > 0)
+  }
+
   useEffect(() => {
     getShop();
     if (isActive) {
@@ -168,13 +173,19 @@ const Index = () => {
     }
   }, [isActive]);
 
+  useEffect(() => {
+    if (latestVersion && shopData) {
+      checkThemeUpdate();
+    }
+  }, [latestVersion, shopData]);
+
   const handleChangeLicenseKey = useCallback(
     (newValue) => setLicenseKey(newValue),
     []
   );
 
   const activateLicense = async () => {
-    // let sessionToken = await getSessionToken(app);
+    let sessionToken = await getSessionToken(app);
 
     setIsLoading(true);
 
@@ -186,7 +197,7 @@ const Index = () => {
     try {
       let response = await axios.post("/api/activate_license", body, {
         headers: {
-          // Authorization: `Bearer ${sessionToken}`,
+          Authorization: `Bearer ${sessionToken}`,
         },
       });
       setIsLoading(false);
@@ -200,7 +211,7 @@ const Index = () => {
   };
 
   const installTheme = async () => {
-    // let sessionToken = await getSessionToken(app);
+    let sessionToken = await getSessionToken(app);
     setIsLoading(true);
     let body = {
       shop,
@@ -209,7 +220,27 @@ const Index = () => {
     try {
       let { data } = await axios.post("/api/install_theme", body, {
         headers: {
-          // Authorization: `Bearer ${sessionToken}`,
+          Authorization: `Bearer ${sessionToken}`,
+        },
+      });
+      setIsLoading(false);
+      setActiveSuccess(4);
+    } catch (error) {
+      setIsLoading(false);
+    }
+  };
+
+  const updateTheme = async () => {
+    let sessionToken = await getSessionToken(app);
+    setIsLoading(true);
+    let body = {
+      shop,
+    };
+
+    try {
+      let { data } = await axios.post("/api/update_theme", body, {
+        headers: {
+          Authorization: `Bearer ${sessionToken}`,
         },
       });
       setIsLoading(false);
@@ -241,8 +272,8 @@ const Index = () => {
                 <Card title="Latest Version" sectioned>
                   <TextContainer>
                   <p>{latestVersion}</p>
-                  {compareVersions(latestVersion, shopData.detail.theme_version) &&
-                    <Button primary>Update version</Button>
+                  {hasUpdate &&
+                    <Button onClick={updateTheme} primary>Update version</Button>
                   }
                   </TextContainer>
                 </Card>

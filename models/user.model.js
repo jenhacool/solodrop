@@ -12,7 +12,7 @@ const UserSchema = mongoose.Schema(
       default: {},
     },
     license_key: {
-      type: "Object",
+      type: "String",
       required: true,
       default: {},
     },
