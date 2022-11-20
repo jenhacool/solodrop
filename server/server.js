@@ -180,17 +180,18 @@ app.prepare().then(async () => {
         let hmac = ctx.request.headers['x-shopify-hmac-sha256'];
         let hash = crypto.createHmac('sha256', process.env.SHOPIFY_WEBHOOK_KEY).update(ctx.request.rawBody, 'utf8', 'hex').digest('base64');
 
-        if (hmac != hash) {
-          ctx.status = 200;
-          ctx.body = {
-            success: false,
-          };
-          return
-        }
+        // if (hmac != hash) {
+        //   ctx.status = 200;
+        //   ctx.body = {
+        //     success: false,
+        //   };
+        //   return
+        // }
 
-        let { email } = ctx.request.body;
+        let { id, email } = ctx.request.body;
 
         let userInfo = {
+          orderId: id,
           email
         };
 
@@ -212,46 +213,76 @@ app.prepare().then(async () => {
 
         await user.save();
 
-        // let response = await axios.get(`https://a.klaviyo.com/api/profiles/?fields\[profile\]=${email}`, {}, {
-        //   headers: {
-        //     "accept": "application/json",
-        //     "revision": "2022-10-17",
-        //     "content-type": "application/json",
-        //     "Authorization": "pk_ef64b4b1f554e49c6016394c81ea56846d"
-        //   }
-        // });
+        let accessToken = process.env.SOLODROP_API_SECRET
 
-        // console.log(response);
+        let client = new Shopify.Clients.Rest(shop, accessToken);
 
-        // let profiles = response.data.data;
+        let response3 = await axios({
+          method: 'put',
+          url: `https://solo-drop.myshopify.com/admin/api/2022-10/orders/${id}.json`,
+          headers: {
+            'X-Shopify-Access-Token': process.env.SOLODROP_API_SECRET
+          },
+          data: {
+            "order": {
+              "id": id,
+              "note_attributes": [
+                {
+                  "name": "license_key",
+                  "value": license_key,
+                }
+              ]
+            }
+          }
+        });
 
-        // if (!profiles) {
-        //   ctx.status = 200;
-        //   ctx.body = {
-        //     success: true,
-        //   };
-        //   return;
-        // }
+        console.log(id);
 
-        // let profile = profiles[0];
+        console.log(JSON.stringify(response3.data.order.note_attributes));
 
-        // let { id } = profile;
+        let response1 = await axios({
+          method: 'get',
+          url: `https://solo-drop.myshopify.com/admin/api/2022-10/orders/${id}/fulfillment_orders.json`,
+          headers: { 
+            'X-Shopify-Access-Token': process.env.SOLODROP_API_SECRET
+          },
+        });
 
-        // await axios.patch(`https://a.klaviyo.com/api/profiles/${id}`, {
-        //   type: "profile",
-        //   attributes: {
-        //     properties: {
-        //       licenseKey: license_key
-        //     }
-        //   }
-        // }, {
-        //   headers: {
-        //     "accept": "application/json",
-        //     "revision": "2022-10-17",
-        //     "content-type": "application/json",
-        //     "Authorization": "pk_ef64b4b1f554e49c6016394c81ea56846d"
-        //   }
-        // });
+        // console.log('response1', response1);
+
+        let fulfillment_order = response1.data.fulfillment_orders[0];
+
+        let line_items_by_fulfillment_order = fulfillment_order.line_items.map((line_item) => {
+          return {
+            "fulfillment_order_id": line_item.fulfillment_order_id,
+            "fulfillment_order_line_items": [
+              {
+                "id": line_item.id,
+                "quantity": line_item.quantity
+              }
+            ]
+          }
+        });
+
+        let fulfillment = {
+          notify_customer: true,
+          line_items_by_fulfillment_order
+        }
+
+        // console.log('fulfillment', fulfillment);
+
+        let response2 = await axios({
+          method: 'post',
+          url: 'https://solo-drop.myshopify.com/admin/api/2022-10/fulfillments.json',
+          headers: { 
+            'X-Shopify-Access-Token': process.env.SOLODROP_API_SECRET
+          },
+          data : {
+            fulfillment
+          }
+        })
+
+        // console.log('response2', response2);
 
         ctx.status = 200;
         ctx.body = {

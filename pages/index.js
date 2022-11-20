@@ -174,7 +174,7 @@ const Index = () => {
   }, [isActive]);
 
   useEffect(() => {
-    if (latestVersion && shopData) {
+    if (latestVersion && shopData.detail.theme_version) {
       checkThemeUpdate();
     }
   }, [latestVersion, shopData]);
