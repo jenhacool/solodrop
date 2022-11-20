@@ -19,6 +19,10 @@ const shopSchema = mongoose.Schema({
       theme_installing: false,
       theme_version: null
     }
+  },
+  invalid: {
+    type: "Booloean",
+    default: false
   }
 });
 

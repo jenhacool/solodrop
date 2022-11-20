@@ -298,16 +298,59 @@ app.prepare().then(async () => {
     }
   );
 
-  router.post("/api/get_shop", verifyRequest({ accessMode: "offline" }), bodyParser(), async (ctx) => {
+  router.post("/api/get_shop",
+    // verifyRequest({ accessMode: "offline" }),
+    bodyParser(), async (ctx) => {
     let { shop } = ctx.request.body;
 
     try {
       let shopData = await Shop.findOne({ shop });
+      let theme_installed = shopData.detail.theme_installed;
+      let theme_deleted = true;
+      if (theme_installed) {
+        let client = new Shopify.Clients.Rest(shop, shopData.token);
+        let themesResponse = await client.get({
+          path: "themes",
+          query: {
+            fields: "id"
+          }
+        });
+        let themeIds = themesResponse.body.themes.map((theme) => {
+          return theme.id
+        });
+        console.log(themeIds);
+        let themeSettings = await Promise.all(themeIds.map(async (themeId) => {
+          let themeSettingResponse = await axios({
+            method: "get",
+            url: `https://${shop}/admin/api/${process.env.SHOPIFY_API_VERSION}/themes/${themeId}/assets.json`,
+            headers: { 
+              'X-Shopify-Access-Token': shopData.token
+            },
+            params: {
+              "asset[key]": "config/settings_schema.json"
+            }
+          });
+          return JSON.parse(themeSettingResponse.data.asset.value);
+        }));
+        let themeAuthors = themeSettings.map((setting) => {
+          let object = setting.find((s) => {
+            return s.hasOwnProperty("theme_author");
+          });
+          return object.theme_author;
+        });
+        let find = themeAuthors.find((author) => {
+          return author == "Solodrop"
+        });
+        if (find) {
+          theme_deleted = false;
+        }
+      }
       ctx.status = 200;
       ctx.body = {
         success: true,
         data: {
           shopData: shopData ? shopData : {},
+          theme_deleted
         },
       };
     } catch (error) {
