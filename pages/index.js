@@ -8,15 +8,19 @@ import {
   Card,
   FormLayout,
   Frame,
+  Icon,
   IndexTable,
   Layout,
   Loading,
   Page,
+  Stack,
   TextContainer,
   TextField,
   Toast,
   useIndexResourceState,
+  Spinner
 } from "@shopify/polaris";
+import { CircleTickMajor } from '@shopify/polaris-icons';
 import axios from "axios";
 import { useRouter } from "next/router";
 import React, { useCallback, useEffect, useState } from "react";
@@ -34,7 +38,7 @@ const Index = () => {
   const [settingId, setSettingId] = useState("");
   const [openModal, setOpenModal] = useState(false);
   const [openPicker, setOpenPicker] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [name, setName] = useState("");
   const [symbol, setSymbol] = useState("");
   const [contractAddress, setContractAddress] = useState("");
@@ -225,6 +229,16 @@ const Index = () => {
       });
       setIsLoading(false);
       setActiveSuccess(4);
+      let detail = shopData.detail;
+      let newShopData = {
+        ...shopData,
+        detail: {
+          ...detail,
+          theme_installed: true
+        },
+        theme_deleted: false
+      }
+      setShopData(newShopData);
     } catch (error) {
       setIsLoading(false);
     }
@@ -250,58 +264,176 @@ const Index = () => {
     }
   };
 
+  const openInstalledThemes = () => {
+    window.open(`https://${shop}/admin/themes`, '_blank', 'noopener,noreferrer');
+  }
+
+  const Invalid = () => {
+    return (
+      <Layout.Section>
+        <Card sectioned>
+          <div className="card">
+            <h2 className="title">Hmm. Looks like  your license is no longer valid.</h2>
+            <p>Let's get back on track! Grab another license from Solodrop to keep the party going.</p>
+            <Stack distribution="center">
+              <Button primary>Buy a license</Button>
+              <Button primary>Contact Support</Button>
+            </Stack>
+          </div>
+        </Card>
+      </Layout.Section>
+    )
+  }
+
+  const Installed = () => {
+    return (
+      <>
+        <Layout.Section oneThird>
+          <Card title="License" sectioned>
+            <p>{userInfo.license_key}</p>
+          </Card>
+        </Layout.Section>
+        {shopData.detail.theme_installed && (
+          <>
+          <Layout.Section oneThird>
+          <Card title="Current Version" sectioned>
+            {shopData.detail.theme_version}
+          </Card>
+          </Layout.Section>
+          <Layout.Section oneThird>
+          <Card title="Latest Version" sectioned>
+            <TextContainer>
+            <p>{latestVersion}</p>
+            {hasUpdate &&
+              <Button onClick={updateTheme} primary>Update version</Button>
+            }
+            </TextContainer>
+          </Card>
+          </Layout.Section>
+          </>
+        )}
+        <Layout.Section>
+          <Card sectioned>
+            <div className="card">
+              <div className="card-icon">
+                <Icon source={CircleTickMajor} color="success" />
+              </div>
+              <h2 className="title">Solodrop Installed!</h2>
+              {shop &&
+                <Stack distribution="center">
+                  <Button onClick={openInstalledThemes} primary>View Installed Themes</Button>
+                </Stack>
+              }
+            </div>
+          </Card>
+        </Layout.Section>
+      </>
+    )
+  }
+
+  const NotInstalled = () => {
+    return (
+      <Layout.Section>
+        <Card sectioned>
+          <div className="card">
+            <h2 className="title">You're on click away from elevating your store!</h2>
+            <p>Install Solodrop theme on your store now to unlock all of our powerful sales tools.</p>
+            <Stack distribution="center">
+              <Button primary onClick={installTheme}>Install Solodrop Theme</Button>
+            </Stack>
+          </div>
+        </Card>
+      </Layout.Section>
+    )
+  }
+
+  const ThemeDeleted = () => {
+    return (
+      <Layout.Section>
+        <Card sectioned>
+          <div className="card">
+            <h2 className="title">Theme deleted. You're on click away from elevating your store!</h2>
+            <p>Install Solodrop theme on your store now to unlock all of our powerful sales tools.</p>
+            <Stack distribution="center">
+              <Button onClick={installTheme} primary>Install Solodrop Theme</Button>
+            </Stack>
+          </div>
+        </Card>
+      </Layout.Section>
+    )
+  }
+
+  const buyALicense = () => {
+    window.open("https://solodrop.com", '_blank', 'noopener,noreferrer');
+  }
+
+  const primaryAction = () => {
+    if (shopData.invalid) {
+      return {
+        content: "Buy a license", onAction: buyALicense
+      }
+    }
+    return {
+      content: "Install Solodrop Theme",
+      onAction: installTheme,
+      disabled: shopData.detail.theme_installed,
+    }
+  }
+
+  const PageContent = () => {
+    if (shopData.invalid) {
+      return <Invalid />
+    } else if (!shopData.detail.theme_installed) {
+      return <NotInstalled />
+    } else if (shopData.theme_deleted) {
+      return <ThemeDeleted />
+    } else {
+      return <Installed />
+    }
+  }
+
   return (
     <Frame>
-      {isLoading && <Loading />}
-      {shopData && Object.keys(shopData).length > 0 && isActive ? (
-        <Page
-          narrowWidth={true}
-          title="Theme Manager"
-          primaryAction={{ content: "Install Solodrop Theme", onAction: installTheme }}
-        >
+      {isLoading ? (
+        <Page>
           <Layout>
             <Layout.Section>
-              <Card title="License" sectioned>
-                <p>{userInfo.license_key}</p>
-              </Card>
-              {shopData.detail.theme_installed && (
-                <>
-                <Card title="Current Version" sectioned>
-                  {shopData.detail.theme_version}
-                </Card>
-                <Card title="Latest Version" sectioned>
-                  <TextContainer>
-                  <p>{latestVersion}</p>
-                  {hasUpdate &&
-                    <Button onClick={updateTheme} primary>Update version</Button>
-                  }
-                  </TextContainer>
-                </Card>
-                </>
-              )}
+              <div className="loading">
+              <Spinner />
+              </div>
             </Layout.Section>
+          </Layout>
+        </Page>
+      ) : (
+        <>
+      {shopData && Object.keys(shopData).length > 0 && isActive ? (
+        <Page title="Theme Manager" primaryAction={primaryAction()}>
+          <Layout>
+            <PageContent />
           </Layout>
         </Page>
       ) : (
         <Page>
           <Layout>
             <Layout.Section>
-        <Card title="Enter your license code" sectioned>
-          <FormLayout>
-            <TextField
-              value={licenseKey}
-              onChange={handleChangeLicenseKey}
-              autoComplete="off"
-              placeholder="License code"
-            />
-            <Button onClick={activateLicense} disabled={isLoading} primary>
-              Active
-            </Button>
-          </FormLayout>
-        </Card>
-        </Layout.Section>
+              <Card title="Enter your license code" sectioned>
+                <FormLayout>
+                  <TextField
+                    value={licenseKey}
+                    onChange={handleChangeLicenseKey}
+                    autoComplete="off"
+                    placeholder="License code"
+                  />
+                  <Button onClick={activateLicense} disabled={isLoading} primary>
+                    Active
+                  </Button>
+                </FormLayout>
+              </Card>
+            </Layout.Section>
           </Layout>
         </Page>
+      )}
+      </>
       )}
 
       {messageSuccess()}

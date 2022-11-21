@@ -1,0 +1,29 @@
+.loading {
+  display: flex;
+  justify-content: center;
+}
+
+.card {
+  text-align: center;
+
+  .card-icon {
+    .Polaris-Icon {
+      width: 2rem;
+      height: 2rem;
+      margin-bottom: 1rem;
+    }
+  }
+
+  .title {
+    font-size: 1.5em;
+    font-weight: 600;
+    margin-bottom: 1rem;
+  }
+
+  .Polaris-Stack {
+    margin-top: 1rem;
+    .Polaris-Stack__Item {
+      margin-top: 0;
+    }
+  }
+}

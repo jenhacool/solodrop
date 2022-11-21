@@ -21,7 +21,7 @@ const shopSchema = mongoose.Schema({
     }
   },
   invalid: {
-    type: "Booloean",
+    type: "Boolean",
     default: false
   }
 });

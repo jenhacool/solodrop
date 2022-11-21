@@ -299,7 +299,7 @@ app.prepare().then(async () => {
   );
 
   router.post("/api/get_shop",
-    // verifyRequest({ accessMode: "offline" }),
+    verifyRequest({ accessMode: "offline" }),
     bodyParser(), async (ctx) => {
     let { shop } = ctx.request.body;
 
@@ -338,6 +338,7 @@ app.prepare().then(async () => {
           });
           return object.theme_author;
         });
+        console.log(themeAuthors);
         let find = themeAuthors.find((author) => {
           return author == "Solodrop"
         });
@@ -349,8 +350,7 @@ app.prepare().then(async () => {
       ctx.body = {
         success: true,
         data: {
-          shopData: shopData ? shopData : {},
-          theme_deleted
+          shopData: shopData ? {...shopData.toObject(), theme_deleted} : {},
         },
       };
     } catch (error) {
@@ -468,55 +468,12 @@ app.prepare().then(async () => {
       if (!install) {
         return false;
       }
-      await Shop.updateOne({shop}, {detail: {
+      let newShop = await Shop.findOneAndUpdate({shop}, {detail: {
         theme_installed: true,
         theme_installing: true,
         theme_version: theme.latestVersion
-      }})
-      // let graphQL = new Shopify.Clients.Graphql(shopData.shop, shopData.token);
-      // let appInstallation = await graphQL.query({
-      //   data: {
-      //     query: `{
-      //       appInstallation {
-      //         id
-      //       } 
-      //     }`
-      //   }
-      // });
-      // let appId = appInstallation?.body?.data?.appInstallation?.id
-      // const queryWithVariables = {
-      //   query: `
-      //     mutation CreateAppOwnedMetafield($metafields: [MetafieldsSetInput!]!) {
-      //       metafieldsSet(metafields: $metafields) {
-      //         metafields {
-      //           id
-      //           namespace
-      //           key
-      //         }
-      //         userErrors {
-      //           field
-      //           message
-      //         }
-      //       }
-      //     }
-      //   `,
-      //   variables: {
-      //     metafields: [
-			// 			{
-			// 				key: 'test_key',
-			// 				namespace: 'solodrop',
-			// 				ownerId: appId,
-			// 				type: 'single_line_text_field',
-			// 				value: 'test_value',
-			// 			},
-			// 		],
-      //   },
-      // };
-      // let metafield = await graphQL.query({
-      //   data: queryWithVariables
-      // })
-      // console.log(metafield.body.data.metafieldsSet);
-      return true;
+      }});
+      return newShop;
     } catch(error) {
       console.log(error);
       return false;
@@ -526,12 +483,14 @@ app.prepare().then(async () => {
   router.post("/api/install_theme", verifyRequest({ accessMode: "offline" }), bodyParser(), async (ctx) => {
     let { shop } = ctx.request.body;
 
-    await installTheme(shop);
+    let shopData = await installTheme(shop);
 
     ctx.status = 200;
     ctx.body = {
       success: true,
-      data: {},
+      data: {
+        shopData
+      },
     };
   });
 
