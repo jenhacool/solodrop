@@ -60,6 +60,7 @@ const Index = () => {
   const [shopData, setShopData] = useState({})
   const [latestVersion, setLatestVersion] = useState("");
   const [hasUpdate, setHasUpdate] = useState(false);
+  const [openLicenseKeyPage, setOpenLicenseKeyPage] = useState(false);
 
   const shop = router.query.shop || "";
 
@@ -214,35 +215,39 @@ const Index = () => {
     }
   };
 
-  const installTheme = async () => {
-    let sessionToken = await getSessionToken(app);
-    setIsLoading(true);
-    let body = {
-      shop,
-    };
+  // const installTheme = async () => {
+  //   let sessionToken = await getSessionToken(app);
+  //   setIsLoading(true);
+  //   let body = {
+  //     shop,
+  //   };
 
-    try {
-      let { data } = await axios.post("/api/install_theme", body, {
-        headers: {
-          Authorization: `Bearer ${sessionToken}`,
-        },
-      });
-      setIsLoading(false);
-      setActiveSuccess(4);
-      let detail = shopData.detail;
-      let newShopData = {
-        ...shopData,
-        detail: {
-          ...detail,
-          theme_installed: true
-        },
-        theme_deleted: false
-      }
-      setShopData(newShopData);
-    } catch (error) {
-      setIsLoading(false);
-    }
-  };
+  //   try {
+  //     let { data } = await axios.post("/api/install_theme", body, {
+  //       headers: {
+  //         Authorization: `Bearer ${sessionToken}`,
+  //       },
+  //     });
+  //     setIsLoading(false);
+  //     setActiveSuccess(4);
+  //     let detail = shopData.detail;
+  //     let newShopData = {
+  //       ...shopData,
+  //       detail: {
+  //         ...detail,
+  //         theme_installed: true
+  //       },
+  //       theme_deleted: false
+  //     }
+  //     setShopData(newShopData);
+  //   } catch (error) {
+  //     setIsLoading(false);
+  //   }
+  // };
+
+  const installTheme = () => {
+    window.open(`https://solodrop.com`, '_blank', 'noopener,noreferrer');
+  }
 
   const updateTheme = async () => {
     let sessionToken = await getSessionToken(app);
@@ -274,7 +279,7 @@ const Index = () => {
         <Card sectioned>
           <div className="card">
             <h2 className="title">Hmm. Looks like  your license is no longer valid.</h2>
-            <p>Let's get back on track! Grab another license from Solodrop to keep the party going.</p>
+            <p>Let's get you back on track! Grab another license from Solodrop to keep the party going.</p>
             <Stack distribution="center">
               <Button primary>Buy a license</Button>
               <Button primary>Contact Support</Button>
@@ -336,7 +341,7 @@ const Index = () => {
       <Layout.Section>
         <Card sectioned>
           <div className="card">
-            <h2 className="title">You're on click away from elevating your store!</h2>
+            <h2 className="title">You're one click away from elevating your store!</h2>
             <p>Install Solodrop theme on your store now to unlock all of our powerful sales tools.</p>
             <Stack distribution="center">
               <Button primary onClick={installTheme}>Install Solodrop Theme</Button>
@@ -367,10 +372,14 @@ const Index = () => {
     window.open("https://solodrop.com", '_blank', 'noopener,noreferrer');
   }
 
+  const enterLicenseKey = () => {
+    setOpenLicenseKeyPage(true);
+  }
+
   const primaryAction = () => {
     if (shopData.invalid) {
       return {
-        content: "Buy a license", onAction: buyALicense
+        content: "Enter License Key", onAction: enterLicenseKey
       }
     }
     return {
@@ -392,6 +401,30 @@ const Index = () => {
     }
   }
 
+  const EnterLicenseKeyPage = () => {
+    return (
+      <Page>
+        <Layout>
+          <Layout.Section>
+            <Card title="Enter your license code" sectioned>
+              <FormLayout>
+                <TextField
+                  value={licenseKey}
+                  onChange={handleChangeLicenseKey}
+                  autoComplete="off"
+                  placeholder="License code"
+                />
+                <Button onClick={activateLicense} disabled={isLoading} primary>
+                  Active
+                </Button>
+              </FormLayout>
+            </Card>
+          </Layout.Section>
+        </Layout>
+      </Page>
+    )
+  }
+
   return (
     <Frame>
       {isLoading ? (
@@ -406,34 +439,22 @@ const Index = () => {
         </Page>
       ) : (
         <>
-      {shopData && Object.keys(shopData).length > 0 && isActive ? (
-        <Page title="Theme Manager" primaryAction={primaryAction()}>
-          <Layout>
-            <PageContent />
-          </Layout>
-        </Page>
-      ) : (
-        <Page>
-          <Layout>
-            <Layout.Section>
-              <Card title="Enter your license code" sectioned>
-                <FormLayout>
-                  <TextField
-                    value={licenseKey}
-                    onChange={handleChangeLicenseKey}
-                    autoComplete="off"
-                    placeholder="License code"
-                  />
-                  <Button onClick={activateLicense} disabled={isLoading} primary>
-                    Active
-                  </Button>
-                </FormLayout>
-              </Card>
-            </Layout.Section>
-          </Layout>
-        </Page>
-      )}
-      </>
+          {openLicenseKeyPage ? (
+            <EnterLicenseKeyPage />
+          ) : (
+            <>
+              {shopData && Object.keys(shopData).length > 0 && isActive ? (
+                <Page title="Theme Manager" primaryAction={primaryAction()}>
+                  <Layout>
+                    <PageContent />
+                  </Layout>
+                </Page>
+              ) : (
+                <EnterLicenseKeyPage />
+              )}
+            </>
+          )}
+        </>
       )}
 
       {messageSuccess()}
