@@ -273,6 +273,18 @@ const Index = () => {
     window.open(`https://${shop}/admin/themes`, '_blank', 'noopener,noreferrer');
   }
 
+  const getPageContentClassname = () => {
+    if (shopData.invalid) {
+      return "invalid";
+    } else if (!shopData.detail.theme_installed) {
+      return "not-installed";
+    } else if (shopData.theme_deleted) {
+      return "theme-deleted";
+    } else {
+      return "installed";
+    }
+  };
+
   const Invalid = () => {
     return (
       <Layout.Section>
@@ -318,19 +330,21 @@ const Index = () => {
           </>
         )}
         <Layout.Section>
-          <Card sectioned>
-            <div className="card">
-              <div className="card-icon">
-                <Icon source={CircleTickMajor} color="success" />
+          <div className="installed-card">         
+            <Card sectioned>
+              <div className="card">
+                <div className="card-icon">
+                  <Icon source={CircleTickMajor} color="success" />
+                </div>
+                <h2 className="title">Solodrop Installed!</h2>
+                {shop &&
+                  <Stack distribution="center">
+                    <Button onClick={openInstalledThemes} primary>View Installed Themes</Button>
+                  </Stack>
+                }
               </div>
-              <h2 className="title">Solodrop Installed!</h2>
-              {shop &&
-                <Stack distribution="center">
-                  <Button onClick={openInstalledThemes} primary>View Installed Themes</Button>
-                </Stack>
-              }
-            </div>
-          </Card>
+            </Card>
+          </div>
         </Layout.Section>
       </>
     )
@@ -444,10 +458,17 @@ const Index = () => {
           ) : (
             <>
               {shopData && Object.keys(shopData).length > 0 && isActive ? (
-                <Page title="Theme Manager" primaryAction={primaryAction()}>
-                  <Layout>
-                    <PageContent />
-                  </Layout>
+                <Page 
+                  titleMetadata={
+                    <img src="/static/images/logo.svg" width="150" />
+                  }
+                  primaryAction={primaryAction()}
+                >
+                  <div className={getPageContentClassname()}>
+                    <Layout>
+                      <PageContent />
+                    </Layout>
+                  </div>
                 </Page>
               ) : (
                 <EnterLicenseKeyPage />
