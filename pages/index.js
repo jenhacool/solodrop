@@ -458,7 +458,12 @@ const Index = () => {
           ) : (
             <>
               {shopData && Object.keys(shopData).length > 0 && isActive ? (
-                <Page title="Theme Manager" primaryAction={primaryAction()}>
+                <Page 
+                  titleMetadata={
+                    <img src="/static/images/logo.svg" width="150" />
+                  }
+                  primaryAction={primaryAction()}
+                >
                   <div className={getPageContentClassname()}>
                     <Layout>
                       <PageContent />
