@@ -318,7 +318,7 @@ app.prepare().then(async () => {
         let themeIds = themesResponse.body.themes.map((theme) => {
           return theme.id
         });
-        console.log(themeIds);
+        // console.log(themeIds);
         let themeSettings = await Promise.all(themeIds.map(async (themeId) => {
           let themeSettingResponse = await axios({
             method: "get",
@@ -338,11 +338,24 @@ app.prepare().then(async () => {
           });
           return object.theme_author;
         });
-        console.log(themeAuthors);
+        // console.log(themeAuthors);
         let find = themeAuthors.find((author) => {
           return author == "Solodrop"
         });
         if (find) {
+          let versions = [];
+          themeAuthors.forEach((author, index) => {
+            if (author == "Solodrop") {
+              let settings = themeSettings[index];
+              let object = settings.find((s) => {
+                return s.hasOwnProperty("theme_version");
+              });
+              versions.push(object.theme_version);
+            }
+          })
+          if (versions.length) {
+            shopData.detail.theme_version = _.max(versions);
+          }
           theme_deleted = false;
         }
       }
