@@ -399,7 +399,7 @@ const Index = () => {
     return {
       content: "Install Solodrop Theme",
       onAction: installTheme,
-      disabled: shopData.detail.theme_installed,
+      disabled: shopData.detail.theme_installed && shopData.theme_deleted != true,
     }
   }
 
