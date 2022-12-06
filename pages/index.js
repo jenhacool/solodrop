@@ -290,7 +290,7 @@ const Index = () => {
       <Layout.Section>
         <Card sectioned>
           <div className="card">
-            <h2 className="title">Hmm. Looks like  your license is no longer valid.</h2>
+            <h2 className="title">Hmm. Looks like your license is no longer valid.</h2>
             <p>Let's get you back on track! Grab another license from Solodrop to keep the party going.</p>
             <Stack distribution="center">
               <Button primary>Buy a license</Button>
@@ -371,7 +371,7 @@ const Index = () => {
       <Layout.Section>
         <Card sectioned>
           <div className="card">
-            <h2 className="title">Theme deleted. You're on click away from elevating your store!</h2>
+            <h2 className="title">You're one click away from elevating your store!</h2>
             <p>Install Solodrop theme on your store now to unlock all of our powerful sales tools.</p>
             <Stack distribution="center">
               <Button onClick={installTheme} primary>Install Solodrop Theme</Button>
