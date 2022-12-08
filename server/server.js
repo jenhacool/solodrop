@@ -305,7 +305,7 @@ app.prepare().then(async () => {
 
     try {
       let shopData = await Shop.findOne({ shop });
-      let theme_installed = shopData.detail.theme_installed;
+      let theme_installed = true;
       let theme_deleted = true;
       if (theme_installed) {
         let client = new Shopify.Clients.Rest(shop, shopData.token);
@@ -338,7 +338,7 @@ app.prepare().then(async () => {
           });
           return object.theme_author;
         });
-        // console.log(themeAuthors);
+        console.log(themeAuthors);
         let find = themeAuthors.find((author) => {
           return author == "Solodrop"
         });
@@ -363,7 +363,7 @@ app.prepare().then(async () => {
       ctx.body = {
         success: true,
         data: {
-          shopData: shopData ? {...shopData.toObject(), theme_deleted} : {},
+          shopData: shopData ? {...shopData.toObject(), detail: {theme_installed: true,theme_installing: false, theme_version: shopData.detail.theme_version}, theme_deleted} : {},
         },
       };
     } catch (error) {
