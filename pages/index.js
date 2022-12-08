@@ -288,6 +288,7 @@ const Index = () => {
   const Invalid = () => {
     return (
       <Layout.Section>
+        <div className="invalid-card">
         <Card sectioned>
           <div className="card">
             <h2 className="title">Hmm. Looks like your license is no longer valid.</h2>
@@ -298,6 +299,7 @@ const Index = () => {
             </Stack>
           </div>
         </Card>
+        </div>
       </Layout.Section>
     )
   }
@@ -353,6 +355,7 @@ const Index = () => {
   const NotInstalled = () => {
     return (
       <Layout.Section>
+        <div className="not-installed-card">
         <Card sectioned>
           <div className="card">
             <h2 className="title">You're one click away from elevating your store!</h2>
@@ -362,6 +365,7 @@ const Index = () => {
             </Stack>
           </div>
         </Card>
+        </div>
       </Layout.Section>
     )
   }
@@ -369,6 +373,7 @@ const Index = () => {
   const ThemeDeleted = () => {
     return (
       <Layout.Section>
+        <div className="theme-deleted-card">
         <Card sectioned>
           <div className="card">
             <h2 className="title">You're one click away from elevating your store!</h2>
@@ -378,6 +383,7 @@ const Index = () => {
             </Stack>
           </div>
         </Card>
+        </div>
       </Layout.Section>
     )
   }
@@ -429,7 +435,7 @@ const Index = () => {
                   placeholder="License code"
                 />
                 <Button onClick={activateLicense} disabled={isLoading} primary>
-                  Active
+                  Activate License
                 </Button>
               </FormLayout>
             </Card>

@@ -44,11 +44,12 @@
   }
 }
 
-.installed {
+.invalid, .not-installed, .theme-deleted, .installed {
   .Polaris-Text--headingMd {
     font-size: 20px;
     font-weight: bold;
   }
+
   &-card {
     .Polaris-Card__Section {
       padding-top: 100px;
