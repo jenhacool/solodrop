@@ -25,6 +25,7 @@ import axios from "axios";
 import { useRouter } from "next/router";
 import React, { useCallback, useEffect, useState } from "react";
 import { compareVersions } from 'compare-versions';
+import EnterLicenseKeyPage from "../components/EnterLicenseKeyPage";
 
 const Index = () => {
   const app = useAppBridge();
@@ -421,30 +422,6 @@ const Index = () => {
     }
   }
 
-  const EnterLicenseKeyPage = () => {
-    return (
-      <Page>
-        <Layout>
-          <Layout.Section>
-            <Card title="Enter your license code" sectioned>
-              <FormLayout>
-                <TextField
-                  value={licenseKey}
-                  onChange={handleChangeLicenseKey}
-                  autoComplete="off"
-                  placeholder="License code"
-                />
-                <Button onClick={activateLicense} disabled={isLoading} primary>
-                  Activate License
-                </Button>
-              </FormLayout>
-            </Card>
-          </Layout.Section>
-        </Layout>
-      </Page>
-    )
-  }
-
   return (
     <Frame>
       {isLoading ? (
@@ -460,7 +437,12 @@ const Index = () => {
       ) : (
         <>
           {openLicenseKeyPage ? (
-            <EnterLicenseKeyPage />
+            <EnterLicenseKeyPage 
+              licenseKey={licenseKey}
+              disabled={isLoading}
+              onChangeLicenseKey={handleChangeLicenseKey} 
+              onActivate={activateLicense} 
+            />
           ) : (
             <>
               {shopData && Object.keys(shopData).length > 0 && isActive ? (
@@ -477,7 +459,12 @@ const Index = () => {
                   </div>
                 </Page>
               ) : (
-                <EnterLicenseKeyPage />
+                <EnterLicenseKeyPage 
+                  licenseKey={licenseKey}
+                  disabled={isLoading}
+                  onChangeLicenseKey={handleChangeLicenseKey} 
+                  onActivate={activateLicense} 
+                />
               )}
             </>
           )}
