@@ -24,7 +24,7 @@ const EnterLicenseKeyPage = (props) => {
                 placeholder="License code"
               />
               <Button onClick={onActivate} disabled={disabled} primary>
-                Active
+                Activate
               </Button>
             </FormLayout>
           </Card>

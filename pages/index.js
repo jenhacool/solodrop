@@ -247,7 +247,7 @@ const Index = () => {
   // };
 
   const installTheme = () => {
-    window.open(`https://solodrop.com`, '_blank', 'noopener,noreferrer');
+    window.open(`https://solodrop.com/account`, '_blank', 'noopener,noreferrer');
   }
 
   const updateTheme = async () => {
@@ -359,11 +359,11 @@ const Index = () => {
         <div className="not-installed-card">
         <Card sectioned>
           <div className="card">
-            <h2 className="title">You're one click away from elevating your store!</h2>
-            <p>Install Solodrop theme on your store now to unlock all of our powerful sales tools.</p>
-            <Stack distribution="center">
-              <Button primary onClick={installTheme}>Install Solodrop Theme</Button>
-            </Stack>
+            <h2 className="title">One last step.</h2>
+            <p>A Solodrop theme needs to be present on your store in order to view this page.</p>
+            {/* <Stack distribution="center">
+              <Button primary onClick={installTheme}>Visit Solodrop Hub</Button>
+            </Stack> */}
           </div>
         </Card>
         </div>
@@ -377,11 +377,11 @@ const Index = () => {
         <div className="theme-deleted-card">
         <Card sectioned>
           <div className="card">
-            <h2 className="title">You're one click away from elevating your store!</h2>
-            <p>Install Solodrop theme on your store now to unlock all of our powerful sales tools.</p>
-            <Stack distribution="center">
-              <Button onClick={installTheme} primary>Install Solodrop Theme</Button>
-            </Stack>
+            <h2 className="title">One last step.</h2>
+            <p>A Solodrop theme needs to be present on your store in order to view this page.</p>
+            {/* <Stack distribution="center">
+              <Button onClick={installTheme} primary>Visit Solodrop Hub</Button>
+            </Stack> */}
           </div>
         </Card>
         </div>
@@ -403,11 +403,11 @@ const Index = () => {
         content: "Enter License Key", onAction: enterLicenseKey
       }
     }
-    return {
-      content: "Install Solodrop Theme",
-      onAction: installTheme,
-      disabled: shopData.detail.theme_installed && shopData.theme_deleted != true,
-    }
+    // return {
+    //   content: "Visit Solodrop Hub",
+    //   onAction: installTheme,
+    //   disabled: shopData.detail.theme_installed && shopData.theme_deleted != true,
+    // }
   }
 
   const PageContent = () => {
