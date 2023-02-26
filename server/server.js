@@ -298,6 +298,47 @@ app.prepare().then(async () => {
     }
   );
 
+  router.post("/api/new_order",
+    bodyParser(),
+    async (ctx) => {      
+      try {
+        let order = ctx.request.body;
+
+        var Airtable = require('airtable');
+        var base = new Airtable({apiKey: 'key0AbzExBN2KnbVJ'}).base('applvPJGQacvoTqwG');
+
+        base('Table 1').create([
+          {
+            "fields": {
+              "Order Number": order.name,
+              "Customer": order.customer.email,
+              "Order Value": order.total_line_items_price
+            }
+          },
+        ], function(err, records) {
+          if (err) {
+            console.error(err);
+            return;
+          }
+          records.forEach(function (record) {
+            console.log(record.getId());
+          });
+        });
+
+        ctx.status = 200;
+        ctx.body = {
+          success: true,
+        };
+      } catch (error) {
+        console.log(error);
+        ctx.status = 200;
+        ctx.body = {
+          success: false,
+        };
+      }
+    }
+  );
+
   router.post("/api/get_shop",
     verifyRequest({ accessMode: "offline" }),
     bodyParser(), async (ctx) => {
