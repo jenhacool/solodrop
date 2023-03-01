@@ -256,7 +256,8 @@ app.prepare().then(async () => {
 
         let user =  new User({
           info: userInfo,
-          license_key
+          license_key,
+          expire_at: 0
         })
 
         await user.save();
@@ -345,6 +346,66 @@ app.prepare().then(async () => {
       }
     }
   );
+
+  router.post("/api/new_subscription",
+    bodyParser(),
+    async (ctx) => {
+      try {
+        console.log(ctx.request.body);
+
+        let { subscription } = ctx.request.body;
+
+        let { email } = subscription;
+
+        await User.updateOne({ "info.email": email }, { expire_at: Math.floor(Date.now() / 1000) + (30 * 86400) })
+
+        ctx.status = 200;
+        ctx.body = {
+          success: true,
+        };
+      } catch (error) {
+        console.log(error);
+        ctx.status = 200;
+        ctx.body = {
+          success: false,
+        };
+      }
+    }
+  )
+
+  router.post("/api/update_subscription",
+    bodyParser(),
+    async (ctx) => {
+      try {
+        console.log(ctx.request.body);
+
+        let { subscription } = ctx.request.body;
+
+        let { email } = subscription;
+
+        let user = await User.findOne({ "info.email": email });
+
+        let { shop } = user;
+
+        await User.updateOne({ "info.email": email }, { expire_at: Math.floor(Date.now() / 1000) })
+
+        if (shop) {
+          await Shop.updateOne({ shop }, { active: true });
+        }
+
+        ctx.status = 200;
+        ctx.body = {
+          success: true,
+        };
+      } catch (error) {
+        console.log(error);
+        ctx.status = 200;
+        ctx.body = {
+          success: false,
+        };
+      }
+    }
+  )
 
   router.post("/api/get_shop",
     verifyRequest({ accessMode: "offline" }),
@@ -614,3 +675,23 @@ app.prepare().then(async () => {
     console.log(`> Ready on http://localhost:${port}`);
   });
 });
+
+var CronJob = require("cron").CronJob;
+
+var job = new CronJob("0 0 * * *", async function() {
+	try {
+		let timestamp = Math.round(Date.now() / 1000);
+    let users = await User.find();
+    users = users.filter((user) => {
+      return user.expire_at > 0 && timestamp >= user.expire_at && user.shop;
+    });
+    await Promise.all(users.map(async (user) => {
+      let { shop } = user;
+      await Shop.updateOne({ shop }, { active: false });
+    }));
+  } catch(error) {
+    console.log(error);
+  }
+}, null, true);
+
+job.start();

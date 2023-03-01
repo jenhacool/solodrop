@@ -16,6 +16,11 @@ const UserSchema = mongoose.Schema(
       required: true,
       default: {},
     },
+    expire_at: {
+      type: "Number",
+      required: true,
+      default: 0      
+    }
   },
   { timestamps: true }
 );
