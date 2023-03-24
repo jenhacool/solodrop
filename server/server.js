@@ -236,31 +236,55 @@ app.prepare().then(async () => {
         //   return
         // }
 
-        let { id, email } = ctx.request.body;
+        console.log("order data", ctx.request.body);
 
-        let userInfo = {
-          orderId: id,
-          email
-        };
+        let { id, email, source_name } = ctx.request.body;
 
-        let licenseData = {
-          info: userInfo, 
-          prodCode: "LEN100120", 
-          appVersion: "1.5", 
-          osType: "IOS8"
+        console.log("source_name", source_name);
+
+        let license_key = "";
+
+        if (source_name == "subscription_contract") {
+          let user = await User.findOne({ "info.email": email });
+
+          license_key = user.license_key
+
+          let { shop } = user;
+
+          await User.updateOne({ "info.email": email }, { expire_at: Math.floor(Date.now() / 1000) + (30 * 86400) })
+
+          if (shop) {
+            await Shop.updateOne({ shop }, { active: true });
+          }
+
+          console.log("here new")
+        } else {
+          let userInfo = {
+            orderId: id,
+            email
+          };
+  
+          let licenseData = {
+            info: userInfo, 
+            prodCode: "LEN100120", 
+            appVersion: "1.5", 
+            osType: "IOS8"
+          }
+  
+          let license = licenseKey.createLicense(licenseData);
+  
+          license_key = license.license;
+  
+          let user =  new User({
+            info: userInfo,
+            license_key,
+            expire_at: 0
+          })
+  
+          await user.save();
         }
 
-        let license = licenseKey.createLicense(licenseData);
-
-        let license_key = license.license;
-
-        let user =  new User({
-          info: userInfo,
-          license_key,
-          expire_at: 0
-        })
-
-        await user.save();
+        console.log("fulfill order");
 
         let accessToken = process.env.SOLODROP_API_SECRET
 
@@ -347,11 +371,50 @@ app.prepare().then(async () => {
     }
   );
 
+  router.post("/api/recharge_order_created", bodyParser(), async (ctx) => {
+    try {
+      console.log("recharge_order_created", ctx.request.body);
+
+      let { order } = ctx.request.body;
+
+      console.log(ctx.request.body);
+
+      let { note_attributes } = order;
+
+      let find_licese_key = note_attributes.find((attr) => {
+        return attr.name == "license_key";
+      });
+
+      if (!find_licese_key || !find_licese_key.value) {
+        ctx.status = 200;
+        ctx.body = {
+          success: true,
+        };
+        return;
+      }
+
+      let license_key = find_licese_key.value;
+
+      await User.updateOne({ "license_key": license_key }, { expire_at: Math.floor(Date.now() / 1000) + (30 * 86400) })
+
+      ctx.status = 200;
+      ctx.body = {
+        success: true,
+      };
+    } catch (error) {
+      console.log(error);
+      ctx.status = 200;
+      ctx.body = {
+        success: false,
+      };
+    }
+  })
+
   router.post("/api/new_subscription",
     bodyParser(),
     async (ctx) => {
       try {
-        console.log(ctx.request.body);
+        console.log("new_subscription", ctx.request.body);
 
         let { subscription } = ctx.request.body;
 
@@ -377,7 +440,7 @@ app.prepare().then(async () => {
     bodyParser(),
     async (ctx) => {
       try {
-        console.log(ctx.request.body);
+        console.log("update_subscription", ctx.request.body);
 
         let { subscription } = ctx.request.body;
 
@@ -546,7 +609,7 @@ app.prepare().then(async () => {
         return;
       }
       user = await User.findOneAndUpdate({ license_key }, { shop }, {new: true});
-      await Shop.updateOne({ shop }, { active: true });
+      await Shop.findOneAndUpdate({ shop }, { active: true }, { upsert: true, new: true, setDefaultsOnInsert: true });
       ctx.status = 200;
       ctx.body = {
         success: true,
@@ -632,11 +695,15 @@ app.prepare().then(async () => {
     console.log("here");
     let { shop } = ctx.request.body;
 
-    console.log(ctx.request);
-
-    console.log(ctx.request.body);
-
     try {
+      let shopData = await Shop.findOne({ shop });
+      if (!shopData || !shopData.active) {
+        ctx.status = 400;
+        ctx.body = {
+          success: false,
+        };
+        return;
+      }
       let data = {
         "theme_license_valid": false,
         "theme_installed_version": ""
@@ -645,7 +712,6 @@ app.prepare().then(async () => {
       if (user ) {
         data.theme_license_valid = true;
       }
-      let shopData = await Shop.findOne({ shop });
       if (shopData && shopData.detail.theme_installed && shopData.detail.theme_version) {
         data.theme_installed_version = shopData.detail.theme_version;
       }
@@ -678,13 +744,17 @@ app.prepare().then(async () => {
 
 var CronJob = require("cron").CronJob;
 
-var job = new CronJob("0 0 * * *", async function() {
+// "0 0 * * *"
+
+var job = new CronJob("*/10 * * * * *", async function() {
 	try {
+    console.log("cron run");
 		let timestamp = Math.round(Date.now() / 1000);
     let users = await User.find();
     users = users.filter((user) => {
       return user.expire_at > 0 && timestamp >= user.expire_at && user.shop;
     });
+    console.log("expire", users);
     await Promise.all(users.map(async (user) => {
       let { shop } = user;
       await Shop.updateOne({ shop }, { active: false });
