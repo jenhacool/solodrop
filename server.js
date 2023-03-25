@@ -254,14 +254,6 @@ router.post("/api/activate_license", cors(), bodyParser(), async (ctx) => {
       };
       return
     }
-    if (user.shop != "") {
-      ctx.status = 400;
-      ctx.body = {
-        success: false,
-        message: "License key activated for other store"
-      };
-      return;
-    }
     user = await User.findOneAndUpdate({ license_key }, { shop }, {new: true});
     await Shop.findOneAndUpdate({ shop }, { active: true }, { upsert: true, new: true, setDefaultsOnInsert: true });
     ctx.status = 200;
