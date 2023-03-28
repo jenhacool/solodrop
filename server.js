@@ -68,50 +68,35 @@ router.post("/api/new_user",
       let license_key = "";
 
       if (source_name == "subscription_contract") {
-        let user = await User.findOne({ "info.email": email });
-
-        license_key = user.license_key
-
-        let { shop } = user;
-
-        await User.updateOne({ "info.email": email }, { expire_at: Math.floor(Date.now() / 1000) + (30 * 86400) })
-
-        if (shop) {
-          await Shop.updateOne({ shop }, { active: true });
-        }
-
-        console.log("here new")
-      } else {
-        let userInfo = {
-          orderId: id,
-          email
-        };
-
-        let licenseData = {
-          info: userInfo, 
-          prodCode: "LEN100120", 
-          appVersion: "1.5", 
-          osType: "IOS8"
-        }
-
-        let license = licenseKey.createLicense(licenseData);
-
-        license_key = license.license;
-
-        let user =  new User({
-          info: userInfo,
-          license_key,
-          expire_at: 0
-        })
-
-        await user.save();
+        ctx.status = 200;
+        returnl
       }
 
+      let userInfo = {
+        orderId: id,
+        email
+      };
+
+      let licenseData = {
+        info: userInfo, 
+        prodCode: "LEN100120", 
+        appVersion: "1.5", 
+        osType: "IOS8"
+      }
+
+      let license = licenseKey.createLicense(licenseData);
+
+      license_key = license.license;
+
+      let user =  new User({
+        info: userInfo,
+        license_key,
+        expire_at: 0
+      })
+
+      await user.save();
+
       console.log("fulfill order");
-
-      let accessToken = process.env.SOLODROP_API_SECRET
-
-      let client = new Shopify.Clients.Rest(shop, accessToken);
 
       let response3 = await axios({
         method: 'put',
@@ -194,36 +179,90 @@ router.post("/api/new_user",
   }
 );
 
-router.post("/api/recharge_order_created",
-  bodyParser(), 
+const shopify = axios.create({
+  baseURL: `https://${process.env.SHOP}/admin/api/${process.env.SHOPIFY_API_VERSION}`,
+  headers: { 
+    'X-Shopify-Access-Token': process.env.SHOPIFY_ACCESS_TOKEN
+  },
+  validateStatus: false
+})
+
+const recharge = axios.create({
+  baseURL: process.env.RECHARGE_API_ENDPOINT,
+  headers: {
+    "X-Recharge-Access-Token": process.env.RECHARGE_API_ACCESS_TOKEN,
+  },
+  validateStatus: false
+});
+
+const findLicenseKey = async (subscription_id) => {
+  try {
+    let response = await recharge.get(`/orders?subscription_id=${subscription_id}`);
+
+    let orders = response.data.orders;
+
+    console.log(orders);
+
+    if (!orders.length) {
+      ctx.status = 200;
+      return;
+    }
+
+    let firstOrder = orders.find((order) => {
+      return order.type === "CHECKOUT"
+    });
+
+    console.log(firstOrder);
+
+    if (!firstOrder) {
+      return null;
+    }
+
+    let orderId = firstOrder.shopify_order_id;
+
+    let shopifyResponse = await shopify.get(`/orders/${orderId}.json`);
+
+    let order = shopifyResponse.data.order;
+
+    let { note_attributes, status } = order;
+
+    let find_licese_key = note_attributes.find((attr) => {
+      return attr.name == "license_key";
+    });
+
+    console.log("find_licese_key", find_licese_key)
+
+    if (!find_licese_key || !find_licese_key.value) {
+      return null;
+    }
+
+    let license_key = find_licese_key.value;
+
+    return license_key;
+  } catch (error) {
+    console.log(error);
+    return null;
+  }
+}
+
+router.post("/api/new_subscription",
+  bodyParser(),
   async (ctx) => {
     try {
-      console.log("recharge_order_created", ctx.request.body);
+      console.log("new_subscription", ctx.request.body);
 
-      let { order } = ctx.request.body;
+      let { subscription } = ctx.request.body;
 
-      let { note_attributes, status } = order;
+      let { id } = subscription;
 
-      if (status != "SUCCESS") {
+      let license_key = await findLicenseKey(id);
+
+      console.log(license_key);
+
+      if (!license_key) {
         ctx.status = 200;
-        ctx.body = {
-          success: false,
-        };
-      }
-
-      let find_licese_key = note_attributes.find((attr) => {
-        return attr.name == "license_key";
-      });
-
-      if (!find_licese_key || !find_licese_key.value) {
-        ctx.status = 200;
-        ctx.body = {
-          success: true,
-        };
         return;
       }
-
-      let license_key = find_licese_key.value;
 
       await User.updateOne({ "license_key": license_key }, { expire_at: Math.floor(Date.now() / 1000) + (30 * 86400) });
 
@@ -239,7 +278,48 @@ router.post("/api/recharge_order_created",
       };
     }
   }
-);
+)
+
+router.post("/api/update_subscription",
+  bodyParser(),
+  async (ctx) => {
+    try {
+      console.log("update_subscription", ctx.request.body);
+
+      let { subscription } = ctx.request.body;
+
+      let { id } = subscription;
+
+      let license_key = await findLicenseKey(id);
+
+      if (!license_key) {
+        ctx.status = 200;
+        return;
+      }
+
+      let user = await User.findOne({ "license_key": license_key });
+
+      let { shop } = user;
+
+      await User.updateOne({ "license_key": license_key }, { expire_at: Math.floor(Date.now() / 1000) + (30 * 86400) })
+
+      if (shop) {
+        await Shop.updateOne({ shop }, { active: true });
+      }
+
+      ctx.status = 200;
+      ctx.body = {
+        success: true,
+      };
+    } catch (error) {
+      console.log(error);
+      ctx.status = 200;
+      ctx.body = {
+        success: false,
+      };
+    }
+  }
+)
 
 router.post("/api/activate_license", cors(), bodyParser(), async (ctx) => {
   let { shop, license_key } = ctx.request.body;
