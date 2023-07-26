@@ -8,6 +8,7 @@
   "dependencies": {
     "@koa/cors": "^3.1.0",
     "axios": "^0.27.2",
+    "cron": "^2.3.1",
     "cross-env": "^7.0.3",
     "crypto": "^1.0.1",
     "dotenv": "^16.0.1",
@@ -19,7 +20,7 @@
     "koa-static": "^5.0.0",
     "license-key-gen": "^0.1.4",
     "lodash": "^4.17.21",
-    "nodemon": "^2.0.19",
-    "mongoose": "^5.13.9"
+    "mongoose": "^5.13.9",
+    "nodemon": "^2.0.19"
   }
 }
